@@ -1,11 +1,9 @@
-use std::path::PathBuf;
-use std::env;
-use std::process::{Command};
-use std::sync::Arc;
-
-use tokio;
 use image::DynamicImage;
+use opener::open;
 use reqwest;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tokio;
 
 async fn image_fetch(url: &str) -> Result<Arc<DynamicImage>, Box<dyn std::error::Error>> {
     let response = reqwest::get(url).await?.bytes().await?;
@@ -13,7 +11,9 @@ async fn image_fetch(url: &str) -> Result<Arc<DynamicImage>, Box<dyn std::error:
     Ok(Arc::new(img))
 }
 
-fn save_image_to_temp_file(image: Arc<DynamicImage>) -> Result<PathBuf, Box<dyn std::error::Error>> {
+fn save_image_to_temp_file(
+    image: Arc<DynamicImage>,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let temp_dir = tempfile::tempdir()?;
     let mut path = temp_dir.path().to_path_buf();
     path.set_file_name("fetched_image.png");
@@ -31,20 +31,14 @@ fn save_image_to_temp_file(image: Arc<DynamicImage>) -> Result<PathBuf, Box<dyn 
 }
 
 fn open_image(path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-            let cmd = format!("C start \"{}\"", path.display());
-            Command::new("cmd")
-           .arg(cmd)
-           .spawn()
-           .expect("Failed to execute 'start' command");
+    opener::open(path)?;
     Ok(())
 }
 
 async fn image_fetch_and_display(url: String) -> Result<(), Box<dyn std::error::Error>> {
     let image = image_fetch(&url).await?;
     match save_image_to_temp_file(image) {
-        Ok(temp_path) => {
-            open_image(temp_path)
-        },
+        Ok(temp_path) => open_image(temp_path),
         Err(e) => return Err(e),
     }
 }
@@ -52,7 +46,7 @@ async fn image_fetch_and_display(url: String) -> Result<(), Box<dyn std::error::
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
-    if args.len()!= 2 {
+    if args.len() != 2 {
         println!("Usage: cargo run <image_url>");
         return;
     }
